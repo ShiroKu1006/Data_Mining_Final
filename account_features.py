@@ -21,18 +21,42 @@ CHANNEL_MAP = {
     "UNK": "unk_channel",
 }
 
+VALID_CHANNEL_KEYS = set(CHANNEL_MAP.keys())
+
+
 def safe_div(a: pd.Series, b: pd.Series) -> pd.Series:
     b = b.replace(0, np.nan)
     return (a / b).fillna(0.0)
+
 
 def entropy_from_counts(counts: pd.DataFrame) -> pd.Series:
     probs = counts.div(counts.sum(axis=1).replace(0, np.nan), axis=0).fillna(0.0)
     eps = 1e-12
     return -(probs * np.log(probs + eps)).sum(axis=1)
 
+
+def normalize_channel_type(s: pd.Series) -> pd.Series:
+    x = s.astype("string").str.strip().str.upper()
+    x = x.fillna("UNK")
+    x = x.replace({"": "UNK", "NAN": "UNK", "NONE": "UNK"})
+
+    is_num = x.str.fullmatch(r"\d+")
+    num = pd.to_numeric(x.where(is_num, np.nan), errors="coerce")
+
+    num = num.astype("Int64")
+    num_str = num.astype("string")
+
+    mapped_num = num_str.map(lambda v: f"{int(v):02d}" if v is not pd.NA else pd.NA)
+    x = x.where(~is_num, mapped_num)
+
+    x = x.where(x.isin(VALID_CHANNEL_KEYS), "UNK")
+    return x
+
+
 def main() -> None:
     if not IN_PATH.exists():
         raise FileNotFoundError(f"找不到檔案：{IN_PATH}")
+
     df = pd.read_csv(IN_PATH, encoding="utf-8", low_memory=False)
 
     need_cols = ["from_acct", "txn_amt", "txn_date", "currency_type", "channel_type", "is_self_txn"]
@@ -50,8 +74,8 @@ def main() -> None:
     df.loc[~df["is_self_txn"].isin(["Y", "N", "UNK"]), "is_self_txn"] = "UNK"
 
     df["currency_type"] = df["currency_type"].astype("string").str.strip().str.upper().fillna("UNK")
-    df["channel_type"] = df["channel_type"].astype("string").str.strip().str.upper().fillna("UNK")
 
+    df["channel_type"] = normalize_channel_type(df["channel_type"])
     df["channel_group"] = df["channel_type"].map(CHANNEL_MAP).fillna("unk_channel")
 
     df["is_cross_bank"] = 0
@@ -143,6 +167,7 @@ def main() -> None:
             out[c] = out[c].fillna(0.0)
 
     out.to_csv(OUT_PATH, index=False, encoding="utf-8-sig")
+
 
 if __name__ == "__main__":
     main()
