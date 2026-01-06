@@ -1,18 +1,18 @@
 """
-主題1：交易活躍度 - DBSCAN 分群（Colab 版本）
+Theme 1: Transaction Activity - DBSCAN Clustering (Colab Version)
 
-使用說明：
-1. 上傳 account_features_v1.csv 到 Colab
-2. 安裝中文字體（執行第一個 cell）
-3. 執行此腳本
+Instructions:
+1. Upload account_features_v1.csv to Colab
+2. Install fonts (execute first cell)
+3. Run this script
 
-改進：只對交易數 >= 3 的帳戶分群
+Improvement: Only cluster accounts with txn_cnt >= 3
 """
 
-# ===== Colab 環境設置（先執行這段） =====
+# ===== Colab Environment Setup (Execute this first) =====
 # !apt-get install -y fonts-noto-cjk > /dev/null 2>&1
 # from google.colab import files
-# uploaded = files.upload()  # 上傳 account_features_v1.csv
+# uploaded = files.upload()  # Upload account_features_v1.csv
 
 import pandas as pd
 import numpy as np
@@ -21,42 +21,42 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 
-# Colab 中文字體設定
-plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP']
+# Colab font settings
+plt.rcParams['font.sans-serif'] = ['DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 
-# 讀取資料（Colab 版本：檔案在同目錄）
+# Read data (Colab version: file in same directory)
 df_all = pd.read_csv('account_features_v1.csv')
 features = ['txn_cnt', 'active_days', 'txn_cnt_per_day', 'max_txn_per_day']
 
-# 過濾：只保留交易數 >= 3 的帳戶
+# Filter: Only keep accounts with txn_cnt >= 3
 threshold = 3
 df = df_all[df_all['txn_cnt'] >= threshold].copy()
 
 print("="*80)
-print("主題1：DBSCAN 分群分析（Colab 版本）")
+print("Theme 1: DBSCAN Clustering Analysis (Colab Version)")
 print("="*80)
-print(f"總帳戶數: {len(df_all):,}")
-print(f"過濾條件: txn_cnt >= {threshold}")
-print(f"保留帳戶數: {len(df):,} ({len(df)/len(df_all)*100:.2f}%)")
-print(f"排除帳戶數: {len(df_all)-len(df):,} ({(len(df_all)-len(df))/len(df_all)*100:.2f}%)\n")
+print(f"Total accounts: {len(df_all):,}")
+print(f"Filter condition: txn_cnt >= {threshold}")
+print(f"Retained accounts: {len(df):,} ({len(df)/len(df_all)*100:.2f}%)")
+print(f"Excluded accounts: {len(df_all)-len(df):,} ({(len(df_all)-len(df))/len(df_all)*100:.2f}%)\n")
 
-# 1. 標準化
-print("步驟1：特徵標準化")
+# 1. Standardization
+print("Step 1: Feature Standardization")
 print("-"*80)
 X = df[features].values
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-print("✓ 已使用 StandardScaler 標準化")
-print(f"  標準化後形狀: {X_scaled.shape}\n")
+print("✓ Standardized using StandardScaler")
+print(f"  Standardized shape: {X_scaled.shape}\n")
 
-# 2. 快速測試幾組參數
-print("步驟2：測試不同參數組合")
+# 2. Quick test of parameter combinations
+print("Step 2: Testing Different Parameter Combinations")
 print("-"*80)
-print("使用 ball_tree 算法（Colab 記憶體足夠）\n")
+print("Using ball_tree algorithm (Colab has sufficient memory)\n")
 
-# Colab 可以用 ball_tree 和多核心
+# Colab can use ball_tree and multi-core
 eps_values = [0.5, 0.7, 1.0]
 min_samples_values = [30, 50, 100]
 
@@ -64,8 +64,8 @@ results = []
 
 for eps in eps_values:
     for min_samp in min_samples_values:
-        print(f"  測試 eps={eps}, min_samples={min_samp}...", end='', flush=True)
-        # Colab 版本：使用 ball_tree + 多核心
+        print(f"  Testing eps={eps}, min_samples={min_samp}...", end='', flush=True)
+        # Colab version: using ball_tree + multi-core
         dbscan = DBSCAN(eps=eps, min_samples=min_samp, algorithm='ball_tree', n_jobs=-1)
         labels = dbscan.fit_predict(X_scaled)
         
@@ -80,108 +80,108 @@ for eps in eps_values:
             'noise_pct': n_noise / len(labels) * 100
         })
         
-        print(f" {n_clusters} 群集, 噪音 {n_noise/len(labels)*100:.1f}%")
+        print(f" {n_clusters} clusters, noise {n_noise/len(labels)*100:.1f}%")
 
-# 結果摘要
+# Results summary
 results_df = pd.DataFrame(results)
-print("\n參數組合結果摘要:")
+print("\nParameter Combination Results Summary:")
 print(results_df.to_string(index=False))
 
-# 3. 選擇噪音點比例合理的參數（約 10-20%）
-print("\n步驟3：選擇最佳參數並詳細分析")
+# 3. Select parameters with reasonable noise ratio (approx. 10-20%)
+print("\nStep 3: Select Best Parameters and Detailed Analysis")
 print("-"*80)
 
-# 自動選擇噪音點 5-25% 之間的組合
+# Automatically select combinations with noise between 5-25%
 reasonable = results_df[(results_df['noise_pct'] >= 5) & (results_df['noise_pct'] <= 25)]
 if len(reasonable) > 0:
-    # 選擇群集數最多的（分群最細緻）
+    # Select the one with most clusters (finest clustering)
     best = reasonable.loc[reasonable['n_clusters'].idxmax()]
     eps_chosen = best['eps']
     min_samples_chosen = int(best['min_samples'])
-    print(f"自動選擇: eps={eps_chosen}, min_samples={min_samples_chosen}")
-    print(f"  理由: 噪音比例 {best['noise_pct']:.1f}%（合理範圍），{int(best['n_clusters'])} 個群集")
+    print(f"Auto-selected: eps={eps_chosen}, min_samples={min_samples_chosen}")
+    print(f"  Reason: Noise ratio {best['noise_pct']:.1f}% (reasonable range), {int(best['n_clusters'])} clusters")
 else:
-    # 備選：使用中間值
+    # Fallback: use middle values
     eps_chosen = 0.7
     min_samples_chosen = 50
-    print(f"使用預設: eps={eps_chosen}, min_samples={min_samples_chosen}")
+    print(f"Using default: eps={eps_chosen}, min_samples={min_samples_chosen}")
 
-print("\n執行最終分群...")
+print("\nExecuting final clustering...")
 dbscan = DBSCAN(eps=eps_chosen, min_samples=min_samples_chosen, algorithm='ball_tree', n_jobs=-1)
 labels = dbscan.fit_predict(X_scaled)
 
-# 將標籤加入資料
+# Add labels to data
 df['cluster'] = labels
 
-# 統計各群集
-print("\n群集統計:")
+# Cluster statistics
+print("\nCluster Statistics:")
 cluster_stats = df['cluster'].value_counts().sort_index()
 for cluster_id, count in cluster_stats.items():
     if cluster_id == -1:
-        print(f"  噪音點: {count:,} ({count/len(df)*100:.2f}%)")
+        print(f"  Noise points: {count:,} ({count/len(df)*100:.2f}%)")
     else:
-        print(f"  群集 {cluster_id}: {count:,} ({count/len(df)*100:.2f}%)")
+        print(f"  Cluster {cluster_id}: {count:,} ({count/len(df)*100:.2f}%)")
 
-# 各群集特徵平均值
-print("\n各群集特徵平均值:")
+# Feature means by cluster
+print("\nCluster Feature Means:")
 cluster_means = df.groupby('cluster')[features].mean()
 print(cluster_means.round(2))
 
-print("\n各群集特徵中位數:")
+print("\nCluster Feature Medians:")
 cluster_medians = df.groupby('cluster')[features].median()
 print(cluster_medians.round(2))
 
-# 視覺化
-print("\n正在生成分群視覺化...")
+# Visualization
+print("\nGenerating clustering visualization...")
 pca = PCA(n_components=2)
 X_pca = pca.fit_transform(X_scaled)
 
 fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
-# 左圖：分群結果
+# Left plot: Clustering results
 ax = axes[0]
 scatter = ax.scatter(X_pca[:, 0], X_pca[:, 1], c=labels, cmap='tab10', 
                      s=2, alpha=0.5)
 ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}%)')
 ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}%)')
-ax.set_title(f'DBSCAN 分群結果 (eps={eps_chosen}, min_samples={min_samples_chosen})')
-plt.colorbar(scatter, ax=ax, label='群集')
+ax.set_title(f'DBSCAN Clustering Results (eps={eps_chosen}, min_samples={min_samples_chosen})')
+plt.colorbar(scatter, ax=ax, label='Cluster')
 
-# 右圖：噪音點 vs 非噪音點
+# Right plot: Noise vs Non-noise points
 ax = axes[1]
 is_noise = labels == -1
-ax.scatter(X_pca[~is_noise, 0], X_pca[~is_noise, 1], c='blue', s=2, alpha=0.5, label='群集內')
-ax.scatter(X_pca[is_noise, 0], X_pca[is_noise, 1], c='red', s=2, alpha=0.5, label='噪音點')
+ax.scatter(X_pca[~is_noise, 0], X_pca[~is_noise, 1], c='blue', s=2, alpha=0.5, label='In Cluster')
+ax.scatter(X_pca[is_noise, 0], X_pca[is_noise, 1], c='red', s=2, alpha=0.5, label='Noise Points')
 ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}%)')
 ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}%)')
-ax.set_title('噪音點分布')
+ax.set_title('Noise Point Distribution')
 ax.legend()
 
 plt.tight_layout()
 plt.savefig('dbscan_clusters_filtered.png', dpi=300, bbox_inches='tight')
-print(f"✓ 分群視覺化已儲存至: dbscan_clusters_filtered.png")
+print(f"✓ Clustering visualization saved to: dbscan_clusters_filtered.png")
 
-# 儲存分群結果（包含被排除的帳戶，標記為 cluster = -999）
-df_all['cluster'] = -999  # 低活躍度帳戶標記為 -999
+# Save clustering results (including excluded accounts, marked as cluster = -999)
+df_all['cluster'] = -999  # Low activity accounts marked as -999
 df_all.loc[df.index, 'cluster'] = df['cluster']
 
 output_file = 'theme1_cluster_results_filtered.csv'
 df_all[['cid'] + features + ['cluster']].to_csv(output_file, index=False)
-print(f"\n✓ 分群結果已儲存至: {output_file}")
-print(f"  說明: cluster=-999 表示低活躍度帳戶（txn_cnt < {threshold}）")
-print(f"        cluster=-1 表示噪音點（高活躍但異常）")
-print(f"        cluster>=0 表示正常群集")
+print(f"\n✓ Clustering results saved to: {output_file}")
+print(f"  Note: cluster=-999 indicates low activity accounts (txn_cnt < {threshold})")
+print(f"        cluster=-1 indicates noise points (high activity but anomalous)")
+print(f"        cluster>=0 indicates normal clusters")
 
 print("\n" + "="*80)
-print("分析完成！")
+print("Analysis Complete!")
 print("="*80)
-print("\n分群品質評估：")
-print(f"1. 群集數量: {len([c for c in cluster_stats.index if c >= 0])}")
-print(f"2. 噪音比例: {cluster_stats.get(-1, 0)/len(df)*100:.2f}%")
-print(f"3. 最大群集: {cluster_stats[cluster_stats.index >= 0].max():,} 個帳戶")
-print(f"4. 最小群集: {cluster_stats[cluster_stats.index >= 0].min():,} 個帳戶")
+print("\nClustering Quality Assessment:")
+print(f"1. Number of clusters: {len([c for c in cluster_stats.index if c >= 0])}")
+print(f"2. Noise ratio: {cluster_stats.get(-1, 0)/len(df)*100:.2f}%")
+print(f"3. Largest cluster: {cluster_stats[cluster_stats.index >= 0].max():,} accounts")
+print(f"4. Smallest cluster: {cluster_stats[cluster_stats.index >= 0].min():,} accounts")
 
-# ===== 下載結果（最後執行） =====
+# ===== Download results (execute last) =====
 # from google.colab import files
 # files.download('theme1_cluster_results_filtered.csv')
 # files.download('dbscan_clusters_filtered.png')

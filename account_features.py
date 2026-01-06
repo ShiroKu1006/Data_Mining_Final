@@ -10,13 +10,13 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 OUT_PATH = OUT_DIR / "account_features_v1.csv"
 
 CHANNEL_MAP = {
-    "1": "atm",
-    "2": "counter",
-    "3": "mobile_bank",
-    "4": "web_bank",
-    "5": "voice",
-    "6": "eatm",
-    "7": "epay",
+    "01": "atm",
+    "02": "counter",
+    "03": "mobile_bank",
+    "04": "web_bank",
+    "05": "voice",
+    "06": "eatm",
+    "07": "epay",
     "99": "system_txn",
     "UNK": "unk_channel",
 }
