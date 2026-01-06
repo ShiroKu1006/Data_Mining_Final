@@ -2,4 +2,3 @@
 *.csv
 data/
 venv/
-*.png
