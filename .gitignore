@@ -2,3 +2,7 @@
 *.csv
 data/
 venv/
+.venv/
+.docx
+pic/
+pic2/
